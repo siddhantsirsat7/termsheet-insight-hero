@@ -3,34 +3,47 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { FileUp, FilePlus, AlertCircle, Database } from 'lucide-react';
+import { FileUp, FilePlus, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [fileType, setFileType] = useState<string>('');
   const [termSheetFile, setTermSheetFile] = useState<File | null>(null);
   const [validationFile, setValidationFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleTermSheetFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setTermSheetFile(e.target.files[0]);
+      const file = e.target.files[0];
+      const allowedTypes = ['.csv', '.pdf', '.xlsx', '.xls', '.png', '.jpg', '.jpeg'];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (allowedTypes.includes(fileExtension)) {
+        setTermSheetFile(file);
+      } else {
+        toast.error('Unsupported file type. Please upload CSV, PDF, Excel, or Image files.');
+      }
     }
   };
 
   const handleValidationFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setValidationFile(e.target.files[0]);
+      const file = e.target.files[0];
+      const allowedTypes = ['.xlsx', '.xls'];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (allowedTypes.includes(fileExtension)) {
+        setValidationFile(file);
+      } else {
+        toast.error('Validation file must be an Excel file (.xlsx or .xls).');
+      }
     }
   };
 
   const handleSubmit = () => {
-    if (!fileType || !termSheetFile) {
-      toast.error('Please select a file type and upload a term sheet file');
+    if (!termSheetFile) {
+      toast.error('Please upload a term sheet file');
       return;
     }
 
@@ -62,35 +75,13 @@ const Dashboard = () => {
               </h3>
               
               <div className="mb-6">
-                <RadioGroup 
-                  value={fileType} 
-                  onValueChange={setFileType}
-                  className="grid grid-cols-3 gap-4"
-                >
-                  <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 transition-colors">
-                    <RadioGroupItem value="csv" id="csv" />
-                    <Label htmlFor="csv" className="cursor-pointer font-medium">CSV</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 transition-colors">
-                    <RadioGroupItem value="pdf" id="pdf" />
-                    <Label htmlFor="pdf" className="cursor-pointer font-medium">PDF</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 transition-colors">
-                    <RadioGroupItem value="excel" id="excel" />
-                    <Label htmlFor="excel" className="cursor-pointer font-medium">Excel</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="mb-6">
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-theme-blue transition-colors">
                   <input 
                     type="file" 
                     id="termsheet-file" 
                     className="hidden" 
                     onChange={handleTermSheetFileChange}
-                    accept={fileType === 'csv' ? '.csv' : fileType === 'pdf' ? '.pdf' : '.xlsx,.xls'}
-                    disabled={!fileType}
+                    accept=".csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg"
                   />
                   <label 
                     htmlFor="termsheet-file" 
@@ -100,8 +91,8 @@ const Dashboard = () => {
                     <span className="text-sm font-medium text-gray-700 mb-1">
                       {termSheetFile ? termSheetFile.name : 'Click to upload or drag and drop'}
                     </span>
-                    <span className="text-xs text-gray-500">
-                      {fileType ? `${fileType.toUpperCase()} files only` : 'Please select a file type first'}
+                    <span className="text-xs text-gray-500 mt-2">
+                      Supported files: CSV, PDF, Excel, Image
                     </span>
                   </label>
                 </div>
@@ -112,7 +103,7 @@ const Dashboard = () => {
           <Card className="dashboard-card">
             <CardContent className="pt-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                <Database className="mr-2 h-5 w-5 text-theme-blue" />
+                <FileUp className="mr-2 h-5 w-5 text-theme-blue" />
                 Validation Data
               </h3>
               
@@ -166,7 +157,7 @@ const Dashboard = () => {
           <Button 
             size="lg" 
             onClick={handleSubmit}
-            disabled={!fileType || !termSheetFile || isSubmitting}
+            disabled={!termSheetFile || isSubmitting}
             className="w-full md:w-auto px-10"
           >
             {isSubmitting ? 'Processing...' : 'Analyze Term Sheet'}
