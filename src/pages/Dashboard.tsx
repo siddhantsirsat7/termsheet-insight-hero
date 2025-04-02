@@ -3,15 +3,19 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileUp, FilePlus, AlertCircle } from 'lucide-react';
+import { FileUp, FilePlus, AlertCircle, Lock, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
+import { Input } from '@/components/ui/input';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [termSheetFile, setTermSheetFile] = useState<File | null>(null);
   const [validationFile, setValidationFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState<'direct' | 'credentials' | null>(null);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleTermSheetFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -42,8 +46,13 @@ const Dashboard = () => {
   };
 
   const handleSubmit = () => {
-    if (!termSheetFile) {
+    if (uploadMethod === 'direct' && !termSheetFile) {
       toast.error('Please upload a term sheet file');
+      return;
+    }
+
+    if (uploadMethod === 'credentials' && (!username || !password)) {
+      toast.error('Please enter both username and password');
       return;
     }
 
@@ -54,6 +63,117 @@ const Dashboard = () => {
       setIsSubmitting(false);
       navigate('/results');
     }, 2000);
+  };
+
+  const renderUploadOptions = () => {
+    if (!uploadMethod) {
+      return (
+        <div className="flex flex-col space-y-4">
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center p-6"
+            onClick={() => setUploadMethod('direct')}
+          >
+            <Upload className="mr-2" />
+            Upload Directly
+          </Button>
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center p-6"
+            onClick={() => setUploadMethod('credentials')}
+          >
+            <Lock className="mr-2" />
+            Use Login Credentials
+          </Button>
+        </div>
+      );
+    }
+
+    if (uploadMethod === 'credentials') {
+      return (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <Input 
+              id="username" 
+              type="text" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              placeholder="Enter your username"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <Input 
+              id="password" 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              placeholder="Enter your password"
+            />
+          </div>
+          <div className="flex justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => setUploadMethod(null)}
+            >
+              Back
+            </Button>
+            <Button 
+              variant="default" 
+              disabled={!username || !password}
+              onClick={handleSubmit}
+            >
+              Login & Access
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-theme-blue transition-colors mb-4">
+          <input 
+            type="file" 
+            id="termsheet-file" 
+            className="hidden" 
+            onChange={handleTermSheetFileChange}
+            accept=".csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg"
+          />
+          <label 
+            htmlFor="termsheet-file" 
+            className="cursor-pointer flex flex-col items-center justify-center"
+          >
+            <FilePlus className="h-12 w-12 text-gray-400 mb-3" />
+            <span className="text-sm font-medium text-gray-700 mb-1">
+              {termSheetFile ? termSheetFile.name : 'Click to upload or drag and drop'}
+            </span>
+            <span className="text-xs text-gray-500 mt-2">
+              Supported files: CSV, PDF, Excel, Image
+            </span>
+          </label>
+        </div>
+        <div className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setUploadMethod(null);
+              setTermSheetFile(null);
+            }}
+          >
+            Back
+          </Button>
+          <Button 
+            variant="default" 
+            disabled={!termSheetFile}
+            onClick={handleSubmit}
+          >
+            Upload & Process
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -75,27 +195,7 @@ const Dashboard = () => {
               </h3>
               
               <div className="mb-6">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-theme-blue transition-colors">
-                  <input 
-                    type="file" 
-                    id="termsheet-file" 
-                    className="hidden" 
-                    onChange={handleTermSheetFileChange}
-                    accept=".csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg"
-                  />
-                  <label 
-                    htmlFor="termsheet-file" 
-                    className="cursor-pointer flex flex-col items-center justify-center"
-                  >
-                    <FilePlus className="h-12 w-12 text-gray-400 mb-3" />
-                    <span className="text-sm font-medium text-gray-700 mb-1">
-                      {termSheetFile ? termSheetFile.name : 'Click to upload or drag and drop'}
-                    </span>
-                    <span className="text-xs text-gray-500 mt-2">
-                      Supported files: CSV, PDF, Excel, Image
-                    </span>
-                  </label>
-                </div>
+                {renderUploadOptions()}
               </div>
             </CardContent>
           </Card>
@@ -157,7 +257,12 @@ const Dashboard = () => {
           <Button 
             size="lg" 
             onClick={handleSubmit}
-            disabled={!termSheetFile || isSubmitting}
+            disabled={
+              (uploadMethod === 'direct' && !termSheetFile) || 
+              (uploadMethod === 'credentials' && (!username || !password)) ||
+              !uploadMethod || 
+              isSubmitting
+            }
             className="w-full md:w-auto px-10"
           >
             {isSubmitting ? 'Processing...' : 'Analyze Term Sheet'}
@@ -169,3 +274,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
